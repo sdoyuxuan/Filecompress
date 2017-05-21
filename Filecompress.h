@@ -442,4 +442,4 @@ private:
 		//temp = lenth;
 	}
 	charinfo _fileinfo[256];
-};
+}; 
