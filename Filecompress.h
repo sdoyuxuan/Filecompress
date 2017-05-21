@@ -226,8 +226,8 @@ public:
 		for (size_t idx = 0; idx < codecount; ++idx)       //从 hzp 中 读取编码 信息 
 		{
 			 fgets(RB,1024, fIn);
-			 CodeInfo += RB[0];
-			 if (!strcmp(RB, "\n")) fgets(RB, 1024, fIn);
+			 CodeInfo += RB[0];                         //刚开始把CodeInfo放到 最后处理 那如果遇见\n的话 上面自己再Gets次 ，那么后面进行CodeInfo的时候 会出现 Codeinfo 记录的是 ',' 而不是\n因为前面已经换行了
+			 if (!strcmp(RB, "\n")) fgets(RB, 1024, fIn); //所以等出现有效字符为 , 号 时 会再 记录次,那么后面 记录有效编码时 ,被记录俩次 ，当解析的时候就崩溃了
 			 temp = RB;
 			 temp = temp.substr(comma(RB) + 1);
 			 appearcount = atoi(temp.c_str());
@@ -356,7 +356,7 @@ private:
 		int ret = 0;
 		if (_p[0] != '0')
 		{
-			if (_p[0] > 'a')
+			if (_p[0] > 'a' || _p[0]=='a')
 			{
 				ret = (_p[0] - 87) * 16;
 			}
@@ -365,7 +365,7 @@ private:
 				ret = (_p[0] - 48)*16;
 			}
 		}
-		if (_p[1] > 'a')
+		if (_p[1] > 'a'||_p[1] == 'a')
 		{
 			ret = ret+(_p[1] - 87);
 		}
@@ -442,4 +442,4 @@ private:
 		//temp = lenth;
 	}
 	charinfo _fileinfo[256];
-}; 
+};
