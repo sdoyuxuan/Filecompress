@@ -35,7 +35,7 @@ struct charinfo
 		_appearcount += _chin._appearcount;
 		return *this;
 	}
-	char _ch;
+	unsigned char _ch;
 	size_t _appearcount;
 	std::string strcode;
 };
@@ -58,11 +58,28 @@ public:
 			return ;
 		}
 		size_t dotpos = File_path.find(".");
-		char WB[1024];
-		char RB[1024];
+		char *WB=new char [1024]; //char WB[1024];
+		char *RB = new char[1024];
 		memset(WB, 0, sizeof(char)* 1024);
 		memset(RB, 0, sizeof(char)* 1024);
-		size_t readsize=fread(RB, sizeof(char), 1024, fIn); // 记录从 Fin 读到的有效字符个数.
+		size_t readsize = 0;
+		size_t Cap_count = 1;
+		size_t Cap_idx = 0;
+		while (!feof(fIn))  
+		{  
+			readsize = fread(RB+Cap_idx, sizeof(char), 1024, fIn); 
+			if (readsize == 1024)
+			{
+				++Cap_count;
+				char * del = new char [1024 * Cap_count];
+				memset(del, 0, 1024 * Cap_count);
+				memmove(del, RB, 1024 * (Cap_count-1));
+				swap(del, RB);
+				delete del;
+				Cap_idx = (Cap_count-1) * 1024;
+			}
+		}  // 记录从 Fin 读到的有效字符个数.
+		readsize = readsize + (Cap_count-1) * 1024;
 		string Name =File_path.substr(0, dotpos);
 		Name += ".hzp";
 		FILE*fOut = fopen(Name.c_str(), "w"); // 让程序自己创建个压缩文件为打开 文件的名字+.hzp  Name.c_str()
@@ -185,6 +202,7 @@ public:
 		progress_bar(100, print_j);
 		if (sum_code > 0)
 		{
+			value<<=(7-sum_code); //  处理最后一个有效字符时 ， 可能 value中的有效值 还没有写入文件中，那么我们要把最低有效位 移到高位去，一个8位数总共可以移动7位，那么假设已经移1位，那么再移 7-1=6位即可把低位有效数移到高位去。
 			itoa(value, WB, 16);
 			if (WB[1] == '\0')
 			{
@@ -198,6 +216,8 @@ public:
 		system("pause");
 		fclose(fIn);
 		fclose(fOut);
+		delete RB;
+		delete WB;
 	}
 	void uncompress(std::string File_path)
 	{
@@ -207,10 +227,13 @@ public:
 			perror("fopen");
 			return;
 		}
-		char WB[1024];
-		char RB[1024];
+		char *WB = new char[1024]; //char WB[1024];
+		char *RB = new char[1024];
 		memset(WB, 0, sizeof(char)* 1024);
 		memset(RB, 0, sizeof(char)* 1024);
+		size_t readsize = 0;
+		size_t Cap_count = 1;
+		size_t Cap_idx = 0;
 		size_t dotpos = File_path.find(".");
 		string Name = File_path.substr(0, dotpos);
         fgets(RB, 1024, fIn); // 记录从 Fin 读到的有效字符个数.
@@ -257,9 +280,23 @@ public:
 			std::reverse(_fileinfo[CodeInfo[idx]].strcode.begin(), _fileinfo[CodeInfo[idx]].strcode.end());
 			PLeef->_weight.strcode=_fileinfo[CodeInfo[idx]].strcode ;
 		}
-		char RB_1[4096];
-		memset(RB_1, 0, sizeof(char)* 4096);
-	    fgets(RB_1, 4096, fIn);
+		//char RB_1[4096];
+		//memset(RB_1, 0, sizeof(char)* 4096);
+	   // fgets(RB_1, 4096, fIn);
+		while (!feof(fIn))
+		{
+			readsize = fread(RB + Cap_idx, sizeof(char), 1024, fIn);
+			if (readsize == 1024)
+			{
+				++Cap_count;
+				char * del = new char[1024 * Cap_count];
+				memset(del, 0, 1024 * Cap_count);
+				memmove(del, RB, 1024 * (Cap_count-1));
+				swap(del, RB);
+				delete del;
+				Cap_idx = (Cap_count - 1) * 1024;
+			}
+		}  // 记录从 Fin 读到的有效字符个数.
 		size_t count_code = Ht.Root()->_weight._appearcount; //有效字符的个数
 		char conven [9];//为每次的8位2进制码
 		char conbase[3];//为保存每个char型数字的值的字符
@@ -267,7 +304,7 @@ public:
 		int i = 0;
 		char pos = 0;
 		int j = 0;
-		int readsize = strlen(RB_1);
+		readsize = readsize + (Cap_count - 1) * 1024;           //size_t readsize = strlen(RB); //RB_1
 		HuffmanTreeNode<charinfo>*pRoot = (HuffmanTreeNode<charinfo>*)Ht.Root();
 		HuffmanTreeNode<charinfo>*pCur = pRoot;
 		string code;
@@ -275,7 +312,7 @@ public:
 		while (readsize)
 		{
 			conbase[2] = 0;
-			memcpy(conbase, RB_1+j, sizeof(char)* 2);
+			memcpy(conbase, RB+j, sizeof(char)* 2);//RB_1
 			result = _hexatoi(conbase);
 			if (result != 0)
 			{
@@ -288,7 +325,7 @@ public:
 			result = 0;
 			while (pos++ != 8)  // 之前写成 ++i 前置加加 少走一步 ，改成i++ 正确 可见 在while中, i=0 ,i++ ,i!=8 对等的是for(i=0;i<8;i++)
 			{
-				if (conven[i++] == '0')
+				if (conven[i] == '0') // conven[i++]
 				{
 					pCur = pCur->_pLeft;
 					code += '0';
@@ -310,6 +347,7 @@ public:
 				{
 					break;
 				}
+				++i;
 			}
 			j += 2;
 			readsize -=2;
@@ -319,6 +357,8 @@ public:
 		}
 		fclose(fIn);
 		fclose(fOut);
+		delete RB;
+		delete WB;
 	}
 	const HuffmanTreeNode<charinfo>*  Getleefinfo(const HuffmanTreeNode<charinfo>*pRoot, char ch)
 	{
